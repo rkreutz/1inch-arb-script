@@ -1,0 +1,19 @@
+{
+  "name": "ethers-playground",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "main": "npx ts-node main.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^17.0.17",
+    "ethers": "^5.5.4",
+    "ts-node": "^10.5.0",
+    "typescript": "^4.5.5"
+  },
+  "dependencies": {}
+}
