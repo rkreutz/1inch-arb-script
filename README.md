@@ -21,6 +21,7 @@ You may wish to tweak some variables to your liking in `main.ts` as well:
 - `maxGas`: the maximum allowed gas units for **each** transaction.
 - `slippage`: the slippage you'd like to use on 1inch aggregator protocol
 - `pollingTime`: the time interval which the script will be polling 1inch API to check whether an arb opportunity exists or not, in **miliseconds**.
+- `formattingDecimalPlaces`: how many decimal places should be shown when printing balances
 
 ### Disclaimer
 

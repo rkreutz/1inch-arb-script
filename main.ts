@@ -11,6 +11,7 @@ const maxGasPrice = BigNumber.from("2000000")
 const maxGas = BigNumber.from("5000000")
 const slippage = '0.5' // percentage, eg. 0.5%
 const pollingTime = 15_000 // ms
+const formattingDecimalPlaces = 2 // How many decimal places after '.' we will show when formatting currencies
 //////////////////////////////////////
 
 
@@ -34,8 +35,9 @@ const address = wallet.address
 var balance: BigNumber
 
 function formatted(value: string, decimals: number): string {
+    value = value.padStart(decimals + 1, "0")
     const integerPart = value.slice(0, value.length - decimals)
-    const fractionPart = value.slice(value.length - decimals, value.length - decimals + 2)
+    const fractionPart = value.slice(value.length - decimals, value.length - decimals + formattingDecimalPlaces)
     return `${integerPart}.${fractionPart}`
 }
 
@@ -127,14 +129,14 @@ async function run() {
             console.log(`Found possible arb at ${new Date()} for ${formatted(returnAmount.sub(balance).toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
             const firstLeg = await swap(fromTokenAddress, toTokenAddress, balance.toString(), address)
             if (BigNumber.from(firstLeg.toTokenAmount).lt(quoteAmount)) {
-                throw `${reference.toToken.symbol} amount on swap was less than quoted`
+                throw `${reference.toToken.symbol} amount on swap was less than quoted, difference: ${formatted(quoteAmount.sub(firstLeg.toTokenAmount).toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`
             }
             const firstLegResponse = await wallet.sendTransaction(firstLeg.ethersTx)
             await firstLegResponse.wait()
             console.log('First leg complete')
             const firstLegBalance = await toTokenContract.balanceOf(address)
             console.log(`First leg balance ${formatted(firstLegBalance.toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`)
-            const secondLeg = await swap(fromTokenAddress, toTokenAddress, firstLegBalance.toString(), address)
+            const secondLeg = await swap(toTokenAddress, fromTokenAddress, firstLegBalance.toString(), address)
             const secondLegResponse = await wallet.sendTransaction(secondLeg.ethersTx)
             await secondLegResponse.wait()
             console.log('Second leg complete')
@@ -158,7 +160,9 @@ async function run() {
     } catch (error) {
         console.error(`Failed at ${new Date()}`)
         console.error(error)
-        clearInterval(reference.interval)
+        if (typeof error == "string" && (error as string)?.includes('Arb was not favorable') == true) {
+            clearInterval(reference.interval)
+        }
     }
 }
 
