@@ -12,10 +12,10 @@ const maxGas = BigNumber.from("5000000")
 const slippage = '0.5' // percentage, eg. 0.5%
 const pollingTime = 15_000 // ms
 const formattingDecimalPlaces = 2 // How many decimal places after '.' we will show when formatting currencies
+const maximumL1Fee = BigNumber.from("1000000000000000") // How much Eth we are willing to pay for L1 calldata, wei denominated.
 //////////////////////////////////////
 
-
-const CHAIN_ID = process.env.CHAIN_ID!
+const CHAIN_ID = 10
 const apiBaseUrl = `https://api.1inch.io/v4.0/${CHAIN_ID}`;
 const fromTokenAddress = process.env.FROM_TOKEN!
 const toTokenAddress = process.env.TO_TOKEN!
@@ -24,6 +24,11 @@ const RPC = process.env.RPC_URL!
 
 const provider = new ethers.providers.JsonRpcProvider(RPC)
 const wallet = new ethers.Wallet(privateKey, provider)
+const l1FeeOracleAddress = "0x420000000000000000000000000000000000000F"
+const l1FeeOracleABI = [
+    "function getL1Fee(bytes _data) view returns (uint256)"
+]
+const l1FeeOracleContract = new ethers.Contract(l1FeeOracleAddress, l1FeeOracleABI, provider)
 const erc20minABI = [
     "function balanceOf(address owner) view returns (uint256)",
     "function decimals() view returns (uint8)",
@@ -33,6 +38,13 @@ const fromTokenContract = new ethers.Contract(fromTokenAddress, erc20minABI, pro
 const toTokenContract = new ethers.Contract(toTokenAddress, erc20minABI, provider)
 const address = wallet.address
 var balance: BigNumber
+
+function customFormatted(value: string, decimals: number, decimalPlaces: number): string {
+    value = value.padStart(decimals + 1, "0")
+    const integerPart = value.slice(0, value.length - decimals)
+    const fractionPart = value.slice(value.length - decimals, value.length - decimals + decimalPlaces)
+    return `${integerPart}.${fractionPart}`
+}
 
 function formatted(value: string, decimals: number): string {
     value = value.padStart(decimals + 1, "0")
@@ -130,6 +142,10 @@ async function run() {
             const firstLeg = await swap(fromTokenAddress, toTokenAddress, balance.toString(), address)
             if (BigNumber.from(firstLeg.toTokenAmount).lt(quoteAmount)) {
                 throw `${reference.toToken.symbol} amount on swap was less than quoted, difference: ${formatted(quoteAmount.sub(firstLeg.toTokenAmount).toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`
+            }
+            const l1Fee = await l1FeeOracleContract.getL1Fee(firstLeg.ethersTx.data)
+            if (maximumL1Fee.lt(l1Fee)) {
+                throw `Transaction would be too expensive to store in L1: ${customFormatted(l1Fee.toString(), 18, 8)} ETH`
             }
             const firstLegResponse = await wallet.sendTransaction(firstLeg.ethersTx)
             await firstLegResponse.wait()

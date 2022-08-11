@@ -7,7 +7,6 @@ This is a simple Node.js script to try arbing a token pair on 1inch aggregator A
 `npm install`
 
 Then you need to create your own `.env` file: 
-- Choose the chain you want to operate on (`CHAIN_ID`)
 - Choose the base token (`FROM_TOKEN`) which you are currently holding and which all profits will be denominated on.
 - Chose the token which will be paired with the base token for the arbitrage (`TO_TOKEN`)
 - Add your private key (`PRIVATE_KEY`)
@@ -22,6 +21,7 @@ You may wish to tweak some variables to your liking in `main.ts` as well:
 - `slippage`: the slippage you'd like to use on 1inch aggregator protocol
 - `pollingTime`: the time interval which the script will be polling 1inch API to check whether an arb opportunity exists or not, in **miliseconds**.
 - `formattingDecimalPlaces`: how many decimal places should be shown when printing balances
+- `maximumL1Fee`: how much ETH we are willing to pay for **each** transaction's calldata to be stored on L1 (WEI denominated).
 
 ### Disclaimer
 
