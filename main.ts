@@ -6,10 +6,9 @@ import dotenv from 'dotenv';
 dotenv.config()
 
 ////////// CONFIGURABLES /////////////
-var minProfit = BigNumber.from("3") // Nominal value
-const maxGasPrice = BigNumber.from("2000000")
-const maxGas = BigNumber.from("5000000")
-const slippage = '0.5' // percentage, eg. 0.5%
+var minProfit = BigNumber.from("6") // Nominal value
+const maxGasPrice = BigNumber.from("10000000")
+const maxGas = BigNumber.from("10000000")
 const pollingTime = 15_000 // ms
 const formattingDecimalPlaces = 2 // How many decimal places after '.' we will show when formatting currencies
 const maximumL1Fee = BigNumber.from("1000000000000000") // How much Eth we are willing to pay for L1 calldata, wei denominated.
@@ -107,7 +106,7 @@ interface Swap {
     ethersTx: TransactionRequest
 }
 
-function swap(fromTokenAddress: string, toTokenAddress: string, amount: string, fromAddress: string): Promise<Swap> {
+function swap(fromTokenAddress: string, toTokenAddress: string, amount: string, fromAddress: string, slippage: string): Promise<Swap> {
     return axios.get(apiRequestUrl('/swap', {fromTokenAddress, toTokenAddress, amount, fromAddress, slippage}))
         .then((value: AxiosResponse<Swap, any>) => {
             value.data.ethersTx = {
@@ -138,9 +137,14 @@ async function run() {
         if (returnAmount.isZero()) return;
         if (balance.add(minProfit).lte(returnAmount)) {
             reference.maxProfit = null
+            const tmpProfit = returnAmount.sub(balance)
+            const allowableSlippage = tmpProfit.sub(minProfit).div(2)
+            const allowableSlippageBPS = allowableSlippage.mul(10000).div(balance)
+            const allowableSlippagePercent = customFormatted(allowableSlippageBPS.toString(), 100, 1)
             console.log(`Found possible arb at ${new Date()} for ${formatted(returnAmount.sub(balance).toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
-            const firstLeg = await swap(fromTokenAddress, toTokenAddress, balance.toString(), address)
-            if (BigNumber.from(firstLeg.toTokenAmount).lt(quoteAmount)) {
+            console.log(`Allowable slippage: ${allowableSlippagePercent}% (${formatted(allowableSlippage.toString(), reference.toToken.decimals)} ${reference.toToken.symbol})`)
+            const firstLeg = await swap(fromTokenAddress, toTokenAddress, balance.toString(), address, allowableSlippagePercent)
+            if (BigNumber.from(firstLeg.toTokenAmount).lt(quoteAmount.mul(BigNumber.from(10000).sub(BigNumber.from(allowableSlippagePercent).mul(100))).div(10000))) {
                 throw `${reference.toToken.symbol} amount on swap was less than quoted, difference: ${formatted(quoteAmount.sub(firstLeg.toTokenAmount).toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`
             }
             const l1Fee = await l1FeeOracleContract.getL1Fee(firstLeg.ethersTx.data)
@@ -152,7 +156,7 @@ async function run() {
             console.log('First leg complete')
             const firstLegBalance = await toTokenContract.balanceOf(address)
             console.log(`First leg balance ${formatted(firstLegBalance.toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`)
-            const secondLeg = await swap(toTokenAddress, fromTokenAddress, firstLegBalance.toString(), address)
+            const secondLeg = await swap(toTokenAddress, fromTokenAddress, firstLegBalance.toString(), address, allowableSlippagePercent)
             const secondLegResponse = await wallet.sendTransaction(secondLeg.ethersTx)
             await secondLegResponse.wait()
             console.log('Second leg complete')
