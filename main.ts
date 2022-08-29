@@ -33,6 +33,13 @@ const toTokenContract = new ethers.Contract(toTokenAddress, erc20minABI, provide
 const address = wallet.address
 var balance: BigNumber
 
+function customFormatted(value: string, decimals: number, decimalPlaces: number): string {
+    value = value.padStart(decimals + 1, "0")
+    const integerPart = value.slice(0, value.length - decimals)
+    const fractionPart = value.slice(value.length - decimals, value.length - decimals + decimalPlaces)
+    return `${integerPart}.${fractionPart}`
+}
+
 function formatted(value: string, decimals: number): string {
     value = value.padStart(decimals + 1, "0")
     const integerPart = value.slice(0, value.length - decimals)
