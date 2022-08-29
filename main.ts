@@ -48,7 +48,7 @@ function apiRequestUrl(methodName: string, queryParams: any) {
 function quote(fromTokenAddress: string, toTokenAddress: string, amount: BigNumber): Promise<BigNumber> {
     return axios.get(apiRequestUrl('/quote', {fromTokenAddress, toTokenAddress, amount: amount.toString()}))
         .then((value: AxiosResponse<any, any>) => {
-            if (BigNumber.from(value.data.estimatedGas).gt(maxGas)) {
+            if (BigNumber.from(value.data.estimatedGas).mul(125).div(100).gt(maxGas)) {
                 console.error(`Gas: ${value.data.estimatedGas}`)
                 throw `Estimated gas is too high`
             }
@@ -104,7 +104,7 @@ function swap(fromTokenAddress: string, toTokenAddress: string, amount: string, 
                 data: value.data.tx.data,
                 value: BigNumber.from(value.data.tx.value),
                 gasPrice: BigNumber.from(value.data.tx.gasPrice),
-                gasLimit: BigNumber.from(value.data.tx.gas)
+                gasLimit: BigNumber.from(value.data.tx.gas).mul(125).div(100)
             }
             if (maxGasPrice.lte(value.data.ethersTx.gasPrice || maxGasPrice)) {
                 throw "Max gas price reached"
