@@ -7,7 +7,7 @@ dotenv.config()
 
 ////////// CONFIGURABLES /////////////
 var minProfit = BigNumber.from("6") // Nominal value
-const maxGasPrice = BigNumber.from("10000000")
+const maxGasPrice = BigNumber.from("100000000")
 const maxGas = BigNumber.from("10000000")
 const pollingTime = 15_000 // ms
 const formattingDecimalPlaces = 2 // How many decimal places after '.' we will show when formatting currencies
