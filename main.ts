@@ -140,9 +140,9 @@ async function run() {
             const tmpProfit = returnAmount.sub(balance)
             const allowableSlippage = tmpProfit.sub(minProfit).div(2)
             const allowableSlippageBPS = allowableSlippage.mul(10000).div(balance)
-            const allowableSlippagePercent = customFormatted(allowableSlippageBPS.toString(), 100, 1)
-            console.log(`Found possible arb at ${new Date()} for ${formatted(returnAmount.sub(balance).toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
-            console.log(`Allowable slippage: ${allowableSlippagePercent}% (${formatted(allowableSlippage.toString(), reference.toToken.decimals)} ${reference.toToken.symbol})`)
+            const allowableSlippagePercent = customFormatted(allowableSlippageBPS.toString(), 2, 1)
+            console.log(`Found possible arb at ${new Date()} for ${formatted(tmpProfit.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
+            console.log(`Allowable slippage: ${allowableSlippagePercent}% (${formatted(allowableSlippage.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol})`)
             const firstLeg = await swap(fromTokenAddress, toTokenAddress, balance.toString(), address, allowableSlippagePercent)
             if (BigNumber.from(firstLeg.toTokenAmount).lt(quoteAmount.mul(BigNumber.from(10000).sub(BigNumber.from(allowableSlippagePercent).mul(100))).div(10000))) {
                 throw `${reference.toToken.symbol} amount on swap was less than quoted, difference: ${formatted(quoteAmount.sub(firstLeg.toTokenAmount).toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`
