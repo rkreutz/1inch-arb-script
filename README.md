@@ -12,6 +12,7 @@ Then you need to create your own `.env` file:
 - Chose the token which will be paired with the base token for the arbitrage (`TO_TOKEN`)
 - Add your private key (`PRIVATE_KEY`)
 - Specify the RPC url for the chain you'd like to send your transactions to (`RPC_URL`)
+- Optionally you may provide a Telegram Bot API tokent (`TELEGRAM_BOT_TOKEN`) with a chat id (`TELEGRAM_CHAT_ID`) to send updates to yourself or a channel. To get the chat id you can simply add the bot to a channel and send some messages, or DM the bot, then go to `https://api.telegram.org/bot<Bot_token>/getUpdates` and get the chatId from there.
 
 Then just run `npm run main` and hopefully you'll be able to pick some arb opportunities.
 

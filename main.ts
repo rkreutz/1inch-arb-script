@@ -2,6 +2,7 @@ import { BigNumber, ethers } from "ethers";
 import { TransactionRequest } from "@ethersproject/abstract-provider";
 import axios, { AxiosResponse } from 'axios';
 import dotenv from 'dotenv';
+import { Telegraf } from 'telegraf';
 
 dotenv.config()
 
@@ -20,6 +21,19 @@ const fromTokenAddress = process.env.FROM_TOKEN!
 const toTokenAddress = process.env.TO_TOKEN!
 const privateKey = process.env.PRIVATE_KEY!
 const RPC = process.env.RPC_URL!
+var bot: Telegraf | undefined
+if (typeof process.env.TELEGRAM_BOT_TOKEN === 'string') {
+    bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN)
+}
+async function sendMessage(message: string) {
+    if (typeof process.env.TELEGRAM_CHAT_ID === 'string') {
+        try {
+            await bot?.telegram.sendMessage(process.env.TELEGRAM_CHAT_ID, message)
+        } catch (error) {
+            console.warn(error)
+        }
+    }
+}
 
 const provider = new ethers.providers.JsonRpcProvider(RPC)
 const wallet = new ethers.Wallet(privateKey, provider)
@@ -137,6 +151,7 @@ async function run() {
             const allowableSlippageBPS = allowableSlippage.mul(10000).div(balance)
             const allowableSlippagePercent = customFormatted(allowableSlippageBPS.toString(), 2, 1)
             console.log(`Found possible arb at ${new Date()} for ${formatted(tmpProfit.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
+            sendMessage(`Found possible arb for ${formatted(tmpProfit.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
             console.log(`Allowable slippage: ${allowableSlippagePercent}% (${formatted(allowableSlippage.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol})`)
             const firstLeg = await swap(fromTokenAddress, toTokenAddress, balance.toString(), address, allowableSlippagePercent)
             if (BigNumber.from(firstLeg.toTokenAmount).lt(quoteAmount.mul(BigNumber.from(10000).sub(BigNumber.from(allowableSlippagePercent).mul(100))).div(10000))) {
@@ -147,12 +162,14 @@ async function run() {
             console.log('First leg complete')
             const firstLegBalance = await toTokenContract.balanceOf(address)
             console.log(`First leg balance ${formatted(firstLegBalance.toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`)
+            sendMessage(`First leg of the arb complete, got ${formatted(firstLegBalance.toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`)
             const secondLeg = await swap(toTokenAddress, fromTokenAddress, firstLegBalance.toString(), address, allowableSlippagePercent)
             const secondLegResponse = await wallet.sendTransaction(secondLeg.ethersTx)
             await secondLegResponse.wait()
             console.log('Second leg complete')
             const finalBalance = await fromTokenContract.balanceOf(address)
             console.log(`Second leg balance ${formatted(finalBalance.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
+            sendMessage(`Second leg of the arb complete, got ${formatted(finalBalance.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
             if (BigNumber.from(finalBalance).lt(balance)) {
                 throw `Arb was not favorable, lost ${formatted(balance.sub(finalBalance).toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`
             } else {
@@ -171,8 +188,10 @@ async function run() {
     } catch (error) {
         console.error(`Failed at ${new Date()}`)
         console.error(error)
+        sendMessage(`Failed with:\n\`${error}\``)
         if (typeof error == "string" && (error as string)?.includes('Arb was not favorable') == true) {
             clearInterval(reference.interval)
+            sendMessage(`This was a bad error so the bot has stopped`)
         }
     }
 }
@@ -194,12 +213,14 @@ async function setup() {
             decimals: toTokenDecimals
         }
         console.log(`Initial balance: ${formatted(balance.toString(), fromTokenDecimals)} ${fromTokenSymbol}`,)
+        sendMessage(`Beginning arb script with balance of ${formatted(balance.toString(), fromTokenDecimals)} ${fromTokenSymbol}`)
         const fromTokenAllowance = await allowance(fromTokenAddress, address)
         if (fromTokenAllowance.isZero()) {
             const trx = await approve(fromTokenAddress)
             const response = await wallet.sendTransaction(trx)
             await response.wait()
             console.log(`Approved ${fromTokenSymbol}`)
+            sendMessage(`Approved 1inch to spend ${fromTokenSymbol}`)
         }
         const toTokenAllowance = await allowance(toTokenAddress, address)
         if (toTokenAllowance.isZero()) {
@@ -207,10 +228,12 @@ async function setup() {
             const response = await wallet.sendTransaction(trx)
             await response.wait()
             console.log(`Approved ${toTokenSymbol}`)
+            sendMessage(`Approved 1inch to spend ${toTokenSymbol}`)
         }
         reference.interval = setInterval(run, pollingTime)
     } catch (error) {
         console.error('Failed setup')
+        sendMessage(`Failed to setup script:\n$\`${error}\``)
         console.error(error)
     }
 }
