@@ -195,6 +195,7 @@ async function run() {
         sendMessage(`Failed with:\n\`${error}\``)
         if (typeof error == "string" && (error as string)?.includes('Arb was not favorable') == true) {
             clearInterval(reference.interval)
+            reference.interval = null
             sendMessage(`This was a bad error so the bot has stopped`)
         }
     }
@@ -244,3 +245,25 @@ async function setup() {
 
 console.log(`Running script... (${new Date()})`)
 setup()
+
+bot?.command('stop', (ctx) => {
+    if (ctx.chat.id.toString() == process.env.TELEGRAM_CHAT_ID) {
+        console.log('Received command to stop bot.')
+        clearInterval(reference.interval)
+        reference.interval = null
+        ctx.reply('Bot has stopped!')
+    }
+});
+bot?.command('restart', async (ctx) => {
+    if (ctx.chat.id.toString() == process.env.TELEGRAM_CHAT_ID && reference.interval == null) {
+        console.log('Received command to restart bot.')
+        ctx.reply('Restarting...')
+        await setup()
+        ctx.reply('Restarted')
+    }
+});
+bot?.launch();
+
+// Enable graceful stop
+process.once('SIGINT', () => bot?.stop('SIGINT'));
+process.once('SIGTERM', () => bot?.stop('SIGTERM'));
