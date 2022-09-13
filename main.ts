@@ -159,7 +159,7 @@ async function run() {
             sendMessage(`Found possible arb for ${formatted(tmpProfit.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
             console.log(`Allowable slippage: ${allowableSlippagePercent}% (${formatted(allowableSlippage.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol})`)
             const firstLeg = await swap(fromTokenAddress, toTokenAddress, balance.toString(), address, allowableSlippagePercent)
-            if (BigNumber.from(firstLeg.toTokenAmount).lt(quoteAmount.mul(BigNumber.from(10000).sub(BigNumber.from(allowableSlippagePercent).mul(100))).div(10000))) {
+            if (BigNumber.from(firstLeg.toTokenAmount).lt(quoteAmount.sub(allowableSlippage))) {
                 throw `${reference.toToken.symbol} amount on swap was less than quoted, difference: ${formatted(quoteAmount.sub(firstLeg.toTokenAmount).toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`
             }
             const l1Fee = await l1FeeOracleContract.getL1Fee(firstLeg.ethersTx.data)
