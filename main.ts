@@ -169,7 +169,11 @@ async function run() {
             const firstLegResponse = await wallet.sendTransaction(firstLeg.ethersTx)
             await firstLegResponse.wait()
             console.log('First leg complete')
-            const firstLegBalance = await toTokenContract.balanceOf(address)
+            var firstLegBalance = await toTokenContract.balanceOf(address)
+            while (firstLegBalance.isZero()) {
+                console.log('Balance outdated, trying again.')
+                firstLegBalance = await toTokenContract.balanceOf(address)
+            }
             console.log(`First leg balance ${formatted(firstLegBalance.toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`)
             sendMessage(`First leg of the arb complete, got ${formatted(firstLegBalance.toString(), reference.toToken.decimals)} ${reference.toToken.symbol}`)
             const secondLeg = await swap(toTokenAddress, fromTokenAddress, firstLegBalance.toString(), address, allowableSlippagePercent)
