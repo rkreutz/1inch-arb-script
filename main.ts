@@ -7,7 +7,7 @@ import { Telegraf } from 'telegraf';
 dotenv.config()
 
 ////////// CONFIGURABLES /////////////
-var minProfit = BigNumber.from("6") // Nominal value
+const minProfit = BigNumber.from("6") // Nominal value
 const maxGasPrice = BigNumber.from("100000000")
 const maxGas = BigNumber.from("10000000")
 const pollingTime = 15_000 // ms
@@ -149,10 +149,10 @@ async function run() {
         if (quoteAmount.isZero()) return;
         const returnAmount = await quote(toTokenAddress, fromTokenAddress, quoteAmount)
         if (returnAmount.isZero()) return;
-        if (balance.add(minProfit).lte(returnAmount)) {
+        if (balance.add(reference.minProfit).lte(returnAmount)) {
             reference.maxProfit = null
             const tmpProfit = returnAmount.sub(balance)
-            const allowableSlippage = tmpProfit.sub(minProfit).div(2)
+            const allowableSlippage = tmpProfit.sub(reference.minProfit).div(2)
             const allowableSlippageBPS = allowableSlippage.mul(10000).div(balance)
             const allowableSlippagePercent = customFormatted(allowableSlippageBPS.toString(), 2, 1)
             console.log(`Found possible arb at ${new Date()} for ${formatted(tmpProfit.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
@@ -196,6 +196,7 @@ async function run() {
             if (profit.gt(currentMaxProfit)) {
                 reference.maxProfit = profit
                 console.log(`Arb wouldn't suffice requirements, max profit so far would be: ${formatted(profit.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
+                sendMessage(`Max profit so far would be: ${formatted(profit.toString(), reference.fromToken.decimals)} ${reference.fromToken.symbol}`)
             }
         }
     } catch (error) {
@@ -215,7 +216,7 @@ async function setup() {
         balance = await fromTokenContract.balanceOf(address)
         const fromTokenSymbol = await fromTokenContract.symbol()
         const fromTokenDecimals = await fromTokenContract.decimals()
-        minProfit = minProfit.mul(BigNumber.from(10).pow(fromTokenDecimals))
+        reference.minProfit = minProfit.mul(BigNumber.from(10).pow(fromTokenDecimals))
         reference.fromToken = {
             symbol: fromTokenSymbol,
             decimals: fromTokenDecimals
